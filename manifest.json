@@ -1,15 +1,7 @@
 {
-  "services": {
-    "example-app": {
-      "name": "example-app",
-      "type": "app",
-      "exec_cmd": "/mnt/managed_home/farm-ng-user-YOUR_USER_HERE/amiga-app-template/venv/bin/python3 /mnt/managed_home/farm-ng-user-YOUR_USER_HERE/amiga-app-template/main.py",
-      "args": [
-        "--config /mnt/managed_home/farm-ng-user-YOUR_USER_HERE/amiga-app-template/config.json", "--port 8042"
-      ],
-      "autostart": true,
-      "app_route": "8042",
-      "display_name": "Monitor App"
-    }
-  }
+  "id": "amiga-rtk",
+  "name": "Amiga RTK Bridge",
+  "version": "0.1.0",
+  "description": "Reads RTK GPS data from USB and streams pose to track_follower.",
+  "entry_point": "launch/rtk_app.launch.py"
 }
