@@ -1,3 +1,4 @@
+pyserial
+pyproj
 farm-ng-amiga
-fastapi
-uvicorn[standard]
+protobuf
