@@ -19,3 +19,22 @@
       "name": "gps_position",
       "uri": {
         "host": "localhost"
+{
+  "name": "amiga_rtk",
+  "uri": {
+    "host": "localhost",
+    "port": 50051
+  },
+  "subscriptions": [],
+  "publications": [
+    {
+      "name": "pose_out",
+      "uri": {
+        "host": "localhost",
+        "port": 50051,
+        "path": "/filter/pose"
+      }
+    }
+  ],
+  "logging_enabled": true
+}
