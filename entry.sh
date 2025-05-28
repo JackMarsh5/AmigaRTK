@@ -15,3 +15,11 @@ echo "[*] Starting AmigaRTK with serial port: $SERIAL_PORT"
 
 # Run the program
 amigartk --serial-port "$SERIAL_PORT"
+#!/bin/bash
+
+set -e
+source venv/bin/activate
+
+SERIAL_PORT=${1:-/dev/ttyACM0}
+echo "Launching AmigaRTK with $SERIAL_PORT"
+python -m main --serial-port "$SERIAL_PORT"
