@@ -1,4 +1,0 @@
-pyserial
-pyproj
-farm-ng-amiga
-protobuf
