@@ -1,51 +1,60 @@
-import os
+import asyncio
 import serial
-from pyproj import Transformer
+from pyubx2 import UBXReader
 from farm_ng.core.event_client import EventClient
 from farm_ng.core.event_service_pb2 import EventServiceConfig
-from farm_ng.canbus.pose_pb2 import Pose2dStamped
+from farm_ng.core.pose_pb2 import Pose
 from google.protobuf.timestamp_pb2 import Timestamp
+from pathlib import Path
+import time
 
-class Localizer:
-    def __init__(self):
-        self.origin_utm = None
-        self.transformer = Transformer.from_crs("epsg:4326", "epsg:32611", always_xy=True)
+SERIAL_PORT = '/dev/ttyACM0'
+BAUDRATE = 115200
 
-    def latlon_to_local(self, lat, lon):
-        easting, northing = self.transformer.transform(lon, lat)
-        if self.origin_utm is None:
-            self.origin_utm = (easting, northing)
-        return easting - self.origin_utm[0], northing - self.origin_utm[1]
+# Set your GPS-to-local-frame converter here if needed.
+def latlon_to_pose(lat, lon, alt):
+    # Example: simplistic ENU offset (replace with UTM or GPS->Map projection if needed)
+    pose = Pose()
+    pose.position.x = lat  # Use transformed X
+    pose.position.y = lon  # Use transformed Y
+    pose.position.z = alt  # Altitude
+    pose.rotation.w = 1.0  # Identity quaternion
+    return pose
 
-def parse_gngll(nmea):
-    parts = nmea.split(",")
+async def main():
+    # Load the event service config
+    service_config = EventServiceConfig()
+    service_config.name = "amiga_rtk"
+    service_config.uri.host = "localhost"
+    service_config.uri.port = 50051
+    client = EventClient(service_config)
+
+    with serial.Serial(SERIAL_PORT, BAUDRATE, timeout=1) as stream:
+        ubr = UBXReader(stream)
+
+        print(f"Connected to GPS on {SERIAL_PORT} at {BAUDRATE} baud.")
+
+        while True:
+            try:
+                (_, msg) = ubr.read()
+                if msg.identity == 'NAV-PVT' and msg.fixType >= 4:  # RTK Fixed/Float
+                    lat = msg.lat / 1e7
+                    lon = msg.lon / 1e7
+                    alt = msg.hMSL / 1000.0  # mm to meters
+
+                    pose = latlon_to_pose(lat, lon, alt)
+                    timestamp = Timestamp()
+                    timestamp.GetCurrentTime()
+                    pose.acquisition_time.CopyFrom(timestamp)
+
+                    print(f"RTK Pose: lat={lat}, lon={lon}, alt={alt}")
+                    await client.request_reply("/filter/pose", pose)
+            except Exception as e:
+                print(f"GPS read error: {e}")
+            await asyncio.sleep(0.1)
+
+if __name__ == "__main__":
     try:
-        lat = float(parts[1][:2]) + float(parts[1][2:]) / 60.0
-        if parts[2] == "S": lat *= -1
-        lon = float(parts[3][:3]) + float(parts[3][3:]) / 60.0
-        if parts[4] == "W": lon *= -1
-        return lat, lon
-    except:
-        return None
-
-def main():
-    port = os.getenv("RTK_PORT", "/dev/ttyACM0")
-    ser = serial.Serial(port, 115200, timeout=1)
-    localizer = Localizer()
-    client = EventClient(EventServiceConfig(name="track_follower", port=20101, host="localhost"))
-
-    while True:
-        line = ser.readline().decode(errors="ignore").strip()
-        if "$GNGLL" in line:
-            result = parse_gngll(line)
-            if result:
-                lat, lon = result
-                x, y = localizer.latlon_to_local(lat, lon)
-                ts = Timestamp()
-                ts.GetCurrentTime()
-                pose = Pose2dStamped(stamp=ts)
-                pose.pose.x = x
-                pose.pose.y = y
-                pose.pose.theta = 0.0
-                print(f"[SEND] X={x:.2f}, Y={y:.2f}")
-                client.request_reply("/pose_local", pose)
+        asyncio.run(main())
+    except KeyboardInterrupt:
+        print("\nShutting down.")
