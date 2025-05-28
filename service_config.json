@@ -1,0 +1,21 @@
+{
+  "name": "amiga_rtk",
+  "uri": {
+    "host": "localhost",
+    "port": 50051
+  },
+  "subscriptions": [
+    {
+      "name": "gps_data",
+      "uri": {
+        "host": "localhost",
+        "port": 50051,
+        "path": "/amiga_rtk/gps"
+      }
+    }
+  ],
+  "publications": [
+    {
+      "name": "gps_position",
+      "uri": {
+        "host": "localhost"
